@@ -14,7 +14,7 @@ public class AI_PROGRAM {
 
     private static volatile String currentGPS = "WAITING_FOR_SATELLITES...";
     private static final String NTFY_TOPIC = "Invasive_species_identified";
-    private static final String MODEL_PATH = "src/main/resources/model.onnx"; // ✅ fix 2
+    private static final String MODEL_PATH = "src/main/resources/model.tflite";
     private static final int IMG_SIZE = 224;
     private static OrtSession session;       // ✅ fix 1
     private static OrtEnvironment env;       // ✅ fix 1
