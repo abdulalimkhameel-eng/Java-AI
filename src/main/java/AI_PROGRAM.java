@@ -87,7 +87,7 @@ public class AI_PROGRAM {
     }
 
     private static void runSystemLoop() {
-        VideoCapture camera = new VideoCapture(0);
+        VideoCapture camera = new VideoCapture(0, Video.CAP_V4L2);
         Mat frame = new Mat();
         if (!camera.isOpened()) {
             System.err.println("[AI] Camera Hardware not detected!");
