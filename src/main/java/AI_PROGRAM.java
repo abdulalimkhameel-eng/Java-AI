@@ -142,7 +142,9 @@ private static boolean performInference(Mat frame) {
         System.out.println("[AI] JPG encoded successfully, size = " + imageBytes.length + " bytes");
 
         // === Try 1: Raw JPEG bytes as String tensor (often what "tensor(string)" models want) ===
-        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{new String(imageBytes, java.nio.charset.StandardCharsets.ISO_8859_1)});
+       // Convert bytes to a Base64 encoded string instead of raw ISO_8859_1
+String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Image});
 
         System.out.println("[AI] Created raw bytes string tensor, running inference...");
 
