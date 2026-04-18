@@ -114,36 +114,42 @@ public class AI_PROGRAM {
     }
 
     private static boolean performInference(Mat frame) {
-        try {
-        var inputInfo = session.getInputMetadata();
-        for (var entry : inputInfo.entrySet()) {
-            System.out.println("Model Input Name: " + entry.getKey());
-            System.out.flush();
-            System.out.println("Model Input Type: " + entry.getValue().getInfo().toString());
-            System.out.flush();
-        }
-            float[][][][] input = new float[1][IMG_SIZE][IMG_SIZE][3];
-            for (int y = 0; y < IMG_SIZE; y++) {
-                for (int x = 0; x < IMG_SIZE; x++) {
-                    double[] pixel = frame.get(y, x);
-                    input[0][y][x][0] = (float)(pixel[0] / 255.0);
-                    input[0][y][x][1] = (float)(pixel[1] / 255.0);
-                    input[0][y][x][2] = (float)(pixel[2] / 255.0);
-                }
-            }
-            OnnxTensor tensor = OnnxTensor.createTensor(env, input);
-            String inputName = session.getInputNames().iterator().next();
-            System.out.println("Input Info: " + session.getInputMetadata().get(inputName).getInfo().toString());
-            OrtSession.Result result = session.run(
-                    Collections.singletonMap(inputName, tensor)
-            );
-            float[][] output = (float[][]) result.get(0).getValue();
-            return output[0][1] > 0.90f;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+    try {
+        // Print what the model really wants
+        String inputName = session.getInputNames().iterator().next();
+        var inputInfo = session.getInputMetadata().get(inputName);
+        
+        System.out.println("=== MODEL INPUT DEBUG ===");
+        System.out.println("Input Name    : " + inputName);
+        System.out.println("Expected Type : " + inputInfo.getInfo());
+        System.out.println("=========================");
+
+        // Convert image to JPEG bytes → then to Base64 string
+        org.opencv.imgcodecs.MatOfByte mob = new org.opencv.imgcodecs.MatOfByte();
+        org.opencv.imgcodecs.Imgcodecs.imencode(".jpg", frame, mob);
+        byte[] imageBytes = mob.toArray();
+        
+        String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+
+        // Create STRING tensor (this is what the model expects)
+        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Image});
+
+        // Run the model
+        OrtSession.Result result = session.run(
+            Collections.singletonMap(inputName, tensor)
+        );
+
+        // Print output to see what we get
+        float[][] output = (float[][]) result.get(0).getValue();
+        System.out.println("Model Output: " + java.util.Arrays.toString(output[0]));
+
+        return output[0][1] > 0.90f;   // change [1] if your model has different classes
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
     }
+}
     private static void sendPhoneNotification(String msg) {
         try {
             HttpClient client = HttpClient.newHttpClient();
