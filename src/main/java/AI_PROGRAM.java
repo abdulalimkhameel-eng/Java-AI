@@ -15,7 +15,7 @@ public class AI_PROGRAM {
 
     private static volatile String currentGPS = "WAITING_FOR_SATELLITES...";
     private static final String NTFY_TOPIC = "Invasive_species_identified";
-    private static final String MODEL_PATH = "./Java-AI/src/main/resources/model.onnx";
+    private static final String MODEL_PATH = "Portfolio/Java-AI/src/main/resources/model.onnx";
     private static final int IMG_SIZE = 224;
     private static OrtSession session;
     private static OrtEnvironment env;
