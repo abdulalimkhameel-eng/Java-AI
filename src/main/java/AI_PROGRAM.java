@@ -88,7 +88,7 @@ public class AI_PROGRAM {
         Mat frame = new Mat();
         if (!camera.isOpened()) {
             System.err.println("[AI] Camera Hardware not detected! --- ATTEMPTING 2");
-            camera = new VideoCapture(2);
+            camera = new VideoCapture(1);
             return;
         }
         System.out.println("[AI] Camera Active. Looking for target.");
