@@ -1,6 +1,7 @@
 import com.fazecast.jSerialComm.SerialPort;
 import org.opencv.core.*;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio;
 import org.opencv.imgproc.Imgproc;
 import ai.onnxruntime.*;
 import java.util.Collections;
@@ -42,40 +43,35 @@ public class AI_PROGRAM {
         }
     }
 
-    public static void startGpsThread() {  // ✅ fix 1 - name matches
-
-        Thread gpsWorker = new Thread(() -> {  // lambda starts
-            SerialPort[] ports = SerialPort.getCommPorts();
-            if (ports.length == 0) {
-                System.err.println("NO PORT FOUND --- STILL SEARCHING");
-                return;
-            }
-            SerialPort vk172 = ports[0];
-            for (SerialPort port : SerialPort.getCommPorts()) {
+    public static void startGpsThread() {
+    Thread gpsWorker = new Thread(() -> {
+        SerialPort vk172 = null;
+        for (SerialPort port : SerialPort.getCommPorts()) {
             System.out.println("Checking port: " + port.getSystemPortName());
-            // VK172 usually appears as ttyUSB or ttyACM
-            if (port.getSystemPortName().contains("ACM"){
+            if (port.getSystemPortName().contains("USB") || port.getSystemPortName().contains("ACM")) {
                 vk172 = port;
                 break; 
             }
         }
-            vk172.setBaudRate(9600);
-
-            if (vk172.openPort()) {            // ✅ fix 3 - added ()
-                System.out.println("---- Connected TO VK172 ----");
-                Scanner scanner = new Scanner(vk172.getInputStream());
-                while (scanner.hasNextLine()) {
-                    String line = scanner.nextLine(); // ✅ fix 4 - lowercase s
-                    if (line.startsWith("$GPRMC")) {
-                        parseNmea(line);
-                    }
+        if (vk172 == null) {
+            System.err.println("NO GPS PORT FOUND!");
+            return;
+        }
+        vk172.setBaudRate(9600);
+        if (vk172.openPort()) {
+            System.out.println("---- Connected TO: " + vk172.getSystemPortName() + " ----");
+            Scanner scanner = new Scanner(vk172.getInputStream());
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if (line.startsWith("$GPRMC")) {
+                    parseNmea(line);
                 }
             }
-        });  // ✅ fix 5 - lambda closes HERE
-
-        gpsWorker.setDaemon(true); // ✅ now correctly inside startGpsThread
-        gpsWorker.start();
-    } // startGpsThread closes here
+        }
+    });
+    gpsWorker.setDaemon(true);
+    gpsWorker.start();
+}// start gps ends here
 
     public static void parseNmea(String line) { // ✅ fix 5 - own method now
         String[] parts = line.split(",");
