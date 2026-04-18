@@ -105,6 +105,8 @@ public class AI_PROGRAM {
                     sendPhoneNotification(alert);
                     try { Thread.sleep(10000); } catch (InterruptedException e) {}
                 }
+                try { Thread.sleep(1000); } catch (InterruptedException e) {} 
+    }
             }
         }
     }
