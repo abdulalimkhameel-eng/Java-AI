@@ -38,6 +38,8 @@ public class AI_PROGRAM {
             env = OrtEnvironment.getEnvironment();
             session = env.createSession(MODEL_PATH);
             System.out.println("[AI] Model Loaded Successfully.");
+            System.err.println("---PRESS ENTER TO START SYSTEM LOOP---");
+           new java.util.Scanner(System.in).nextLine();
             startGpsThread();   // ✅ matches method name below
             runSystemLoop();
         } catch (Exception error) {
