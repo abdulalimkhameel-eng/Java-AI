@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.empireprotocol</groupId>
+    <groupId>com.empire</groupId>
     <artifactId>EmpireProtocol</artifactId>
     <version>1.0-SNAPSHOT</version>
 
@@ -16,52 +16,27 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.tensorflow</groupId>
-            <artifactId>tensorflow-lite</artifactId>
-            <version>2.14.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.tensorflow</groupId>
-            <artifactId>tensorflow-lite-api</artifactId>
-            <version>2.14.0</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.openpnp</groupId>
             <artifactId>opencv</artifactId>
             <version>4.9.0-0</version>
         </dependency>
 
         <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.17.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.fazecast</groupId>
             <artifactId>jSerialComm</artifactId>
-            <version>[2.0.0,3.0.0)</version>
+            <version>2.11.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.7</version>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>AI_PROGRAM</mainClass>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>
