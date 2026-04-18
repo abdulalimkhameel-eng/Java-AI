@@ -75,18 +75,20 @@ public class AI_PROGRAM {
 
     public static void parseNmea(String line) { // ✅ fix 5 - own method now
         String[] parts = line.split(",");
+        System.out.println("Debug NMEA: " + line);
         if (parts.length > 6 && parts[2].equals("A")) {
             currentGPS = "Lat: " + parts[3] + parts[4] + " | Lon: " + parts[5] + parts[6];
         } else {
-            currentGPS = "---- SATELLITE SEARCHING ----";
+            currentGPS = "SEARCHING_FIX_STATUS: " + parts[2];
         }
     }
 
     private static void runSystemLoop() {
-        VideoCapture camera = new VideoCapture(0, Video.CAP_V4L2);
+        VideoCapture camera = new VideoCapture(0);
         Mat frame = new Mat();
         if (!camera.isOpened()) {
-            System.err.println("[AI] Camera Hardware not detected!");
+            System.err.println("[AI] Camera Hardware not detected! --- ATTEMPTING 2");
+            camera = new VideoCapture(2);
             return;
         }
         System.out.println("[AI] Camera Active. Looking for target.");
