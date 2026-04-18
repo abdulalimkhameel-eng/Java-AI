@@ -1,6 +1,7 @@
 import com.fazecast.jSerialComm.SerialPort;
 import org.opencv.core.*;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio; 
 import org.opencv.imgproc.Imgproc;
 import ai.onnxruntime.*;
 import java.util.Collections;
@@ -14,89 +15,91 @@ public class AI_PROGRAM {
 
     private static volatile String currentGPS = "WAITING_FOR_SATELLITES...";
     private static final String NTFY_TOPIC = "Invasive_species_identified";
-    private static final String MODEL_PATH = "src/main/resources/model.onnx"; // ✅ fix 2
+    private static final String MODEL_PATH = "src/main/resources/model.onnx";
     private static final int IMG_SIZE = 224;
-    private static OrtSession session;       // ✅ fix 1
-    private static OrtEnvironment env;       // ✅ fix 1
+    private static OrtSession session;
+    private static OrtEnvironment env;
 
     static {
         nu.pattern.OpenCV.loadLocally();
     }
 
     public static void main(String[] args) {
-        System.out.println("---SYSTEMS INITIALIZING---");
-        System.out.println("---SEARCHING FOR AI MODEL---");
+        System.out.println("--- SYSTEMS INITIALIZING ---");
         try {
             File modelFile = new File(MODEL_PATH);
             if (!modelFile.exists()) {
-                System.err.println("CRITICAL ERROR: model.tflite not found!");
+                System.err.println("CRITICAL ERROR: model.onnx not found at " + MODEL_PATH);
                 return;
             }
             env = OrtEnvironment.getEnvironment();
             session = env.createSession(MODEL_PATH);
             System.out.println("[AI] Model Loaded Successfully.");
-            startGpsThread();   // ✅ matches method name below
+            
+            startGpsThread();
             runSystemLoop();
         } catch (Exception error) {
             error.printStackTrace();
         }
     }
 
-    public static void startGpsThread() {  // ✅ fix 1 - name matches
-
-        Thread gpsWorker = new Thread(() -> {  // lambda starts
+    public static void startGpsThread() {
+        Thread gpsWorker = new Thread(() -> {
             SerialPort[] ports = SerialPort.getCommPorts();
             if (ports.length == 0) {
-                System.err.println("NO PORT FOUND --- STILL SEARCHING");
+                System.err.println("NO SERIAL PORT FOUND --- STILL SEARCHING");
                 return;
             }
-            SerialPort vk172 = ports[0];       // ✅ fix 2 - inside lambda
+            SerialPort vk172 = ports[0];
             vk172.setBaudRate(9600);
 
-            if (vk172.openPort()) {            // ✅ fix 3 - added ()
+            if (vk172.openPort()) {
                 System.out.println("---- Connected TO VK172 ----");
                 Scanner scanner = new Scanner(vk172.getInputStream());
                 while (scanner.hasNextLine()) {
-                    String line = scanner.nextLine(); // ✅ fix 4 - lowercase s
+                    String line = scanner.nextLine();
                     if (line.startsWith("$GPRMC")) {
                         parseNmea(line);
                     }
                 }
             }
-        });  // ✅ fix 5 - lambda closes HERE
-
-        gpsWorker.setDaemon(true); // ✅ now correctly inside startGpsThread
+        });
+        gpsWorker.setDaemon(true);
         gpsWorker.start();
-    } // startGpsThread closes here
+    }
 
-    public static void parseNmea(String line) { // ✅ fix 5 - own method now
+    public static void parseNmea(String line) {
         String[] parts = line.split(",");
         if (parts.length > 6 && parts[2].equals("A")) {
             currentGPS = "Lat: " + parts[3] + parts[4] + " | Lon: " + parts[5] + parts[6];
-        } else {
-            currentGPS = "---- SATELLITE SEARCHING ----";
         }
     }
 
     private static void runSystemLoop() {
-        VideoCapture camera = new VideoCapture(0);
+        // CAP_V4L2 is essential for Raspberry Pi 5 camera reliability
+        VideoCapture camera = new VideoCapture(0, Videoio.CAP_V4L2);
         Mat frame = new Mat();
+
         if (!camera.isOpened()) {
             System.err.println("[AI] Camera Hardware not detected!");
             return;
         }
+
         System.out.println("[AI] Camera Active. Looking for target.");
         while (true) {
             if (camera.read(frame)) {
-                Mat resized = new Mat();                                       // ✅ fix 6
-                Imgproc.resize(frame, resized, new Size(IMG_SIZE, IMG_SIZE)); // ✅ fix 6
+                Mat resized = new Mat();
+                Imgproc.resize(frame, resized, new Size(IMG_SIZE, IMG_SIZE));
                 Imgproc.cvtColor(resized, resized, Imgproc.COLOR_BGR2RGB);
-                if (performInference(resized)) {                               // ✅ fix 6
+
+                if (performInference(resized)) {
                     String alert = "--- TARGET LOCATED ---, Location: " + currentGPS;
                     System.out.println(alert);
                     sendPhoneNotification(alert);
                     try { Thread.sleep(10000); } catch (InterruptedException e) {}
                 }
+                // CPU Heartbeat to prevent overheating
+                try { Thread.sleep(500); } catch (InterruptedException e) {}
             }
         }
     }
@@ -114,9 +117,7 @@ public class AI_PROGRAM {
             }
             OnnxTensor tensor = OnnxTensor.createTensor(env, input);
             String inputName = session.getInputNames().iterator().next();
-            OrtSession.Result result = session.run(
-                    Collections.singletonMap(inputName, tensor)
-            );
+            OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor));
             float[][] output = (float[][]) result.get(0).getValue();
             return output[0][1] > 0.90f;
         } catch (Exception e) {
@@ -124,6 +125,7 @@ public class AI_PROGRAM {
             return false;
         }
     }
+
     private static void sendPhoneNotification(String msg) {
         try {
             HttpClient client = HttpClient.newHttpClient();
@@ -137,5 +139,4 @@ public class AI_PROGRAM {
             System.err.println("[NTFY] Error sending: " + e.getMessage());
         }
     }
-
-} // whole program brace
+}
