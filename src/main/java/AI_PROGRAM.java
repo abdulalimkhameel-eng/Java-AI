@@ -113,40 +113,59 @@ public class AI_PROGRAM {
             }
         }
     }
-
-    private static boolean performInference(Mat frame) {
+private static boolean performInference(Mat frame) {
     try {
-        // Print what the model really wants
         String inputName = session.getInputNames().iterator().next();
         var inputInfo = session.getInputMetadata().get(inputName);
-        
+
         System.out.println("=== MODEL INPUT DEBUG ===");
         System.out.println("Input Name    : " + inputName);
         System.out.println("Expected Type : " + inputInfo.getInfo());
         System.out.println("=========================");
 
-        // Convert image to JPEG bytes → then to Base64 string
+        // Prepare the image (resize + RGB)
+        Mat resized = new Mat();
+        Imgproc.resize(frame, resized, new Size(IMG_SIZE, IMG_SIZE));
+        Imgproc.cvtColor(resized, resized, Imgproc.COLOR_BGR2RGB);
+
+        // Encode to JPEG bytes
         org.opencv.imgcodecs.MatOfByte mob = new org.opencv.imgcodecs.MatOfByte();
-        org.opencv.imgcodecs.Imgcodecs.imencode(".jpg", frame, mob);
+        boolean encodeOk = org.opencv.imgcodecs.Imgcodecs.imencode(".jpg", resized, mob);
+        resized.release();
+
+        if (!encodeOk) {
+            System.err.println("[AI] Failed to encode frame to JPG");
+            return false;
+        }
+
         byte[] imageBytes = mob.toArray();
-        
-        String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+        System.out.println("[AI] JPG encoded, size = " + imageBytes.length + " bytes");
 
-        // Create STRING tensor (this is what the model expects)
-        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Image});
+        // Create string tensor - base64 (most common for string input)
+        String base64Str = java.util.Base64.getEncoder().encodeToString(imageBytes);
+        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Str});
 
-        // Run the model
+        System.out.println("[AI] String tensor created, running inference...");
+
         OrtSession.Result result = session.run(
             Collections.singletonMap(inputName, tensor)
         );
 
-        // Print output to see what we get
-        float[][] output = (float[][]) result.get(0).getValue();
-        System.out.println("Model Output: " + java.util.Arrays.toString(output[0]));
+        Object rawOutput = result.get(0).getValue();
+        System.out.println("[AI] Output type: " + rawOutput.getClass().getName());
+        System.out.println("[AI] Raw output : " + rawOutput);
 
-        return output[0][1] > 0.90f;   // change [1] if your model has different classes
+        // Try to interpret as classification confidence
+        if (rawOutput instanceof float[][] output) {
+            float confidence = output[0][1];   // change to [0][0] if only one value
+            System.out.println("[AI] Confidence score: " + confidence);
+            return confidence > 0.90f;
+        }
+
+        return false;
 
     } catch (Exception e) {
+        System.err.println("[AI] Inference error: " + e.getMessage());
         e.printStackTrace();
         return false;
     }
