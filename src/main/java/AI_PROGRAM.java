@@ -1,6 +1,7 @@
 import com.fazecast.jSerialComm.SerialPort;
 import org.opencv.core.*;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.videoio.Videoio;
 import org.opencv.imgproc.Imgproc;
 import ai.onnxruntime.*;
