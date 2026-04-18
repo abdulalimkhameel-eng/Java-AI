@@ -2,6 +2,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import org.opencv.core.*;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.imgcodecs.Imgcodecs;
+import java.nio.charset.StandardCharsets;
 import org.opencv.videoio.Videoio;
 import org.opencv.imgproc.Imgproc;
 import ai.onnxruntime.*;
@@ -123,12 +124,11 @@ private static boolean performInference(Mat frame) {
         System.out.println("Expected Type : " + inputInfo.getInfo());
         System.out.println("=========================");
 
-        // Prepare the image (resize + RGB)
+        // Prepare image
         Mat resized = new Mat();
         Imgproc.resize(frame, resized, new Size(IMG_SIZE, IMG_SIZE));
         Imgproc.cvtColor(resized, resized, Imgproc.COLOR_BGR2RGB);
 
-        // Encode to JPEG bytes
         org.opencv.imgcodecs.MatOfByte mob = new org.opencv.imgcodecs.MatOfByte();
         boolean encodeOk = org.opencv.imgcodecs.Imgcodecs.imencode(".jpg", resized, mob);
         resized.release();
@@ -139,26 +139,24 @@ private static boolean performInference(Mat frame) {
         }
 
         byte[] imageBytes = mob.toArray();
-        System.out.println("[AI] JPG encoded, size = " + imageBytes.length + " bytes");
+        System.out.println("[AI] JPG encoded successfully, size = " + imageBytes.length + " bytes");
 
-        // Create string tensor - base64 (most common for string input)
-        String base64Str = java.util.Base64.getEncoder().encodeToString(imageBytes);
-        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Str});
+        // === Try 1: Raw JPEG bytes as String tensor (often what "tensor(string)" models want) ===
+        OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{new String(imageBytes, java.nio.charset.StandardCharsets.ISO_8859_1)});
 
-        System.out.println("[AI] String tensor created, running inference...");
+        System.out.println("[AI] Created raw bytes string tensor, running inference...");
 
         OrtSession.Result result = session.run(
             Collections.singletonMap(inputName, tensor)
         );
 
         Object rawOutput = result.get(0).getValue();
-        System.out.println("[AI] Output type: " + rawOutput.getClass().getName());
-        System.out.println("[AI] Raw output : " + rawOutput);
+        System.out.println("[AI] Output type : " + rawOutput.getClass().getName());
+        System.out.println("[AI] Raw output  : " + rawOutput);
 
-        // Try to interpret as classification confidence
         if (rawOutput instanceof float[][] output) {
-            float confidence = output[0][1];   // change to [0][0] if only one value
-            System.out.println("[AI] Confidence score: " + confidence);
+            float confidence = output[0][1];  // try [0][0] if this doesn't make sense
+            System.out.println("[AI] Confidence: " + confidence);
             return confidence > 0.90f;
         }
 
