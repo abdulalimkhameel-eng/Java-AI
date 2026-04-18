@@ -50,7 +50,15 @@ public class AI_PROGRAM {
                 System.err.println("NO PORT FOUND --- STILL SEARCHING");
                 return;
             }
-            SerialPort vk172 = ports[0];       // ✅ fix 2 - inside lambda
+            SerialPort vk172 = ports[0];
+            for (SerialPort port : SerialPort.getCommPorts()) {
+            System.out.println("Checking port: " + port.getSystemPortName());
+            // VK172 usually appears as ttyUSB or ttyACM
+            if (port.getSystemPortName().contains("ACM"){
+                vk172 = port;
+                break; 
+            }
+        }
             vk172.setBaudRate(9600);
 
             if (vk172.openPort()) {            // ✅ fix 3 - added ()
