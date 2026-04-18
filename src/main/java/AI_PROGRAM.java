@@ -122,6 +122,7 @@ public class AI_PROGRAM {
             }
             OnnxTensor tensor = OnnxTensor.createTensor(env, input);
             String inputName = session.getInputNames().iterator().next();
+            System.out.println("Input Info: " + session.getInputMetadata().get(inputName).getInfo().toString());
             OrtSession.Result result = session.run(
                     Collections.singletonMap(inputName, tensor)
             );
