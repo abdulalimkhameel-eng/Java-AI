@@ -1,7 +1,6 @@
 import com.fazecast.jSerialComm.SerialPort;
 import org.opencv.core.*;
 import org.opencv.videoio.VideoCapture;
-import org.opencv.videoio.Videoio;
 import org.opencv.imgproc.Imgproc;
 import ai.onnxruntime.*;
 import java.util.Collections;
@@ -43,43 +42,39 @@ public class AI_PROGRAM {
         }
     }
 
-    public static void startGpsThread() {
-    Thread gpsWorker = new Thread(() -> {
-        SerialPort vk172 = null;
-        for (SerialPort port : SerialPort.getCommPorts()) {
-            System.out.println("Checking port: " + port.getSystemPortName());
-            if (port.getSystemPortName().contains("USB") || port.getSystemPortName().contains("ACM")) {
-                vk172 = port;
-                break; 
+    public static void startGpsThread() {  // ✅ fix 1 - name matches
+
+        Thread gpsWorker = new Thread(() -> {  // lambda starts
+            SerialPort[] ports = SerialPort.getCommPorts();
+            if (ports.length == 0) {
+                System.err.println("NO PORT FOUND --- STILL SEARCHING");
+                return;
             }
-        }
-        if (vk172 == null) {
-            System.err.println("NO GPS PORT FOUND!");
-            return;
-        }
-        vk172.setBaudRate(9600);
-        if (vk172.openPort()) {
-            System.out.println("---- Connected TO: " + vk172.getSystemPortName() + " ----");
-            Scanner scanner = new Scanner(vk172.getInputStream());
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                if (line.startsWith("$GPRMC")) {
-                    parseNmea(line);
+            SerialPort vk172 = ports[0];       // ✅ fix 2 - inside lambda
+            vk172.setBaudRate(9600);
+
+            if (vk172.openPort()) {            // ✅ fix 3 - added ()
+                System.out.println("---- Connected TO VK172 ----");
+                Scanner scanner = new Scanner(vk172.getInputStream());
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine(); // ✅ fix 4 - lowercase s
+                    if (line.startsWith("$GPRMC")) {
+                        parseNmea(line);
+                    }
                 }
             }
-        }
-    });
-    gpsWorker.setDaemon(true);
-    gpsWorker.start();
-}// start gps ends here
+        });  // ✅ fix 5 - lambda closes HERE
+
+        gpsWorker.setDaemon(true); // ✅ now correctly inside startGpsThread
+        gpsWorker.start();
+    } // startGpsThread closes here
 
     public static void parseNmea(String line) { // ✅ fix 5 - own method now
         String[] parts = line.split(",");
-        System.out.println("Debug NMEA: " + line);
         if (parts.length > 6 && parts[2].equals("A")) {
             currentGPS = "Lat: " + parts[3] + parts[4] + " | Lon: " + parts[5] + parts[6];
         } else {
-            currentGPS = "SEARCHING_FIX_STATUS: " + parts[2];
+            currentGPS = "---- SATELLITE SEARCHING ----";
         }
     }
 
@@ -87,8 +82,7 @@ public class AI_PROGRAM {
         VideoCapture camera = new VideoCapture(0);
         Mat frame = new Mat();
         if (!camera.isOpened()) {
-            System.err.println("[AI] Camera Hardware not detected! --- ATTEMPTING 2");
-            camera = new VideoCapture(1);
+            System.err.println("[AI] Camera Hardware not detected!");
             return;
         }
         System.out.println("[AI] Camera Active. Looking for target.");
@@ -103,8 +97,6 @@ public class AI_PROGRAM {
                     sendPhoneNotification(alert);
                     try { Thread.sleep(10000); } catch (InterruptedException e) {}
                 }
-                try { Thread.sleep(1000); } catch (InterruptedException e) {} 
-    }
             }
         }
     }
@@ -122,7 +114,6 @@ public class AI_PROGRAM {
             }
             OnnxTensor tensor = OnnxTensor.createTensor(env, input);
             String inputName = session.getInputNames().iterator().next();
-            System.out.println("Input Info: " + session.getInputMetadata().get(inputName).getInfo().toString());
             OrtSession.Result result = session.run(
                     Collections.singletonMap(inputName, tensor)
             );
