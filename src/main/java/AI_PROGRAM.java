@@ -111,6 +111,11 @@ public class AI_PROGRAM {
 
     private static boolean performInference(Mat frame) {
         try {
+        var inputInfo = session.getInputMetadata();
+        for (var entry : inputInfo.entrySet()) {
+            System.out.println("Model Input Name: " + entry.getKey());
+            System.out.println("Model Input Type: " + entry.getValue().getInfo().toString());
+        }
             float[][][][] input = new float[1][IMG_SIZE][IMG_SIZE][3];
             for (int y = 0; y < IMG_SIZE; y++) {
                 for (int x = 0; x < IMG_SIZE; x++) {
