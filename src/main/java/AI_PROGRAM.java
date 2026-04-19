@@ -9,6 +9,8 @@ import java.io.File;
 import java.net.URI;
 import java.net.http.*;
 import java.util.Scanner;
+import java.util.Base64; // Added for the Bridge
+import org.opencv.imgcodecs.Imgcodecs; // Added for the Bridge
 import nu.pattern.OpenCV;
 
 public class AI_PROGRAM {
@@ -76,7 +78,6 @@ public class AI_PROGRAM {
     }
 
     private static void runSystemLoop() {
-        // CAP_V4L2 is essential for Raspberry Pi 5 camera reliability
         VideoCapture camera = new VideoCapture(0, Videoio.CAP_V4L2);
         Mat frame = new Mat();
 
@@ -88,17 +89,13 @@ public class AI_PROGRAM {
         System.out.println("[AI] Camera Active. Looking for target.");
         while (true) {
             if (camera.read(frame)) {
-                Mat resized = new Mat();
-                Imgproc.resize(frame, resized, new Size(IMG_SIZE, IMG_SIZE));
-                Imgproc.cvtColor(resized, resized, Imgproc.COLOR_BGR2RGB);
-
-                if (performInference(resized)) {
+                // We don't resize here anymore because the Bridge handles the image
+                if (performInference(frame)) {
                     String alert = "--- TARGET LOCATED ---, Location: " + currentGPS;
                     System.out.println(alert);
                     sendPhoneNotification(alert);
                     try { Thread.sleep(10000); } catch (InterruptedException e) {}
                 }
-                // CPU Heartbeat to prevent overheating
                 try { Thread.sleep(500); } catch (InterruptedException e) {}
             }
         }
@@ -106,25 +103,25 @@ public class AI_PROGRAM {
 
     private static boolean performInference(Mat frame) {
         try {
-            float[][][][] input = new float[1][IMG_SIZE][IMG_SIZE][3];
-            for (int y = 0; y < IMG_SIZE; y++) {
-                for (int x = 0; x < IMG_SIZE; x++) {
-                    double[] pixel = frame.get(y, x);
-                    input[0][y][x][0] = (float)(pixel[0] / 255.0);
-                    input[0][y][x][1] = (float)(pixel[1] / 255.0);
-                    input[0][y][x][2] = (float)(pixel[2] / 255.0);
-                }
-            }
-
-            System.out.println("Model Input Name: " + session.getInputNames().iterator().next());
-            System.out.println("Model Input Info: " + session.getInputInfo().get(session.getInputNames().iterator().next()));
-            OnnxTensor tensor = OnnxTensor.createTensor(env, input);
+            // 1. Compress Mat to JPEG byte array
+            MatOfByte mob = new MatOfByte();
+            Imgcodecs.imencode(".jpg", frame, mob);
+            
+            // 2. Encode to Base64 String (The language your model speaks)
+            String base64Image = Base64.getEncoder().encodeToString(mob.toArray());
+            
+            // 3. Create a Tensor containing the String
+            OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Image});
+            
+            // 4. Run inference
             String inputName = session.getInputNames().iterator().next();
-            OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor));
-            float[][] output = (float[][]) result.get(0).getValue();
-            return output[0][1] > 0.90f;
+            try (OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor))) {
+                // 5. Extract output
+                float[][] output = (float[][]) result.get(0).getValue();
+                return output[0][1] > 0.90f;
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Inference Error: " + e.getMessage());
             return false;
         }
     }
