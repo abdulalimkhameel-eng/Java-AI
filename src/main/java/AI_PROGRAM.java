@@ -103,29 +103,27 @@ public class AI_PROGRAM {
 
     private static boolean performInference(Mat frame) {
         try {
-            // 1. Compress Mat to JPEG byte array
             MatOfByte mob = new MatOfByte();
             Imgcodecs.imencode(".jpg", frame, mob);
-            
-            // 2. Encode to Base64 String
             String base64Image = Base64.getEncoder().encodeToString(mob.toArray());
             
-            // 3. FIX: Ensure it is a 1D array of strings 
-            // The model expects a tensor of shape [1, 1] if it's a single string
-            String[] batch = new String[] { base64Image };
+            // Create the data as a 2D array: [1][1]
+            String[][] batch = new String[][] { { base64Image } };
+            
+            // Explicitly define the shape: [1, 1]
+            long[] shape = new long[] { 1, 1 };
+            
+            // Create the tensor with the shape
             OnnxTensor tensor = OnnxTensor.createTensor(env, batch);
             
-            // 4. Run inference
             String inputName = session.getInputNames().iterator().next();
             try (OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor))) {
-                
-                // 5. Extract output
                 float[][] output = (float[][]) result.get(0).getValue();
                 return output[0][1] > 0.90f;
             }
         } catch (Exception e) {
-            System.err.println("Inference Error: " + e.getMessage());
-            e.printStackTrace(); // This will show exactly where the dimension mismatch is
+            System.err.println("Inference Error Details: " + e.getMessage());
+            e.printStackTrace(); 
             return false;
         }
     }
