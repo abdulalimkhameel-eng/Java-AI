@@ -107,21 +107,25 @@ public class AI_PROGRAM {
             MatOfByte mob = new MatOfByte();
             Imgcodecs.imencode(".jpg", frame, mob);
             
-            // 2. Encode to Base64 String (The language your model speaks)
+            // 2. Encode to Base64 String
             String base64Image = Base64.getEncoder().encodeToString(mob.toArray());
             
-            // 3. Create a Tensor containing the String
-            OnnxTensor tensor = OnnxTensor.createTensor(env, new String[]{base64Image});
+            // 3. FIX: Ensure it is a 1D array of strings 
+            // The model expects a tensor of shape [1, 1] if it's a single string
+            String[] batch = new String[] { base64Image };
+            OnnxTensor tensor = OnnxTensor.createTensor(env, batch);
             
             // 4. Run inference
             String inputName = session.getInputNames().iterator().next();
             try (OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor))) {
+                
                 // 5. Extract output
                 float[][] output = (float[][]) result.get(0).getValue();
                 return output[0][1] > 0.90f;
             }
         } catch (Exception e) {
             System.err.println("Inference Error: " + e.getMessage());
+            e.printStackTrace(); // This will show exactly where the dimension mismatch is
             return false;
         }
     }
