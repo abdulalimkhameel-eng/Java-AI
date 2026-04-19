@@ -115,6 +115,9 @@ public class AI_PROGRAM {
                     input[0][y][x][2] = (float)(pixel[2] / 255.0);
                 }
             }
+
+            System.out.println("Model Input Name: " + session.getInputNames().iterator().next());
+            System.out.println("Model Input Info: " + session.getInputInfo().get(session.getInputNames().iterator().next()));
             OnnxTensor tensor = OnnxTensor.createTensor(env, input);
             String inputName = session.getInputNames().iterator().next();
             OrtSession.Result result = session.run(Collections.singletonMap(inputName, tensor));
